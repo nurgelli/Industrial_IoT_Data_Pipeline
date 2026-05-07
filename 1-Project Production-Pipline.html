@@ -1,0 +1,427 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.w{padding:1rem 0 2rem}
+h1{font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px}
+.sub{font-size:12px;color:var(--color-text-secondary);margin-bottom:1rem}
+.nav{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem}
+.tab{font-size:12px;padding:5px 13px;border-radius:20px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;transition:all 0.15s}
+.tab.on{background:#185FA5;color:#E6F1FB;border-color:#185FA5}
+.sec{display:none}.sec.on{display:block}
+.tbl-wrap{overflow-x:auto;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg)}
+table{width:100%;border-collapse:collapse;min-width:820px}
+thead th{padding:8px 11px;text-align:left;font-size:10px;font-weight:500;color:var(--color-text-secondary);background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);white-space:nowrap}
+tbody tr{border-bottom:0.5px solid var(--color-border-tertiary)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--color-background-secondary)}
+td{padding:8px 11px;font-size:11.5px;color:var(--color-text-primary);vertical-align:top;line-height:1.5}
+.row-new{background:rgba(234,243,222,0.4)}
+.row-new:hover{background:rgba(234,243,222,0.7)}
+.row-ext{background:rgba(250,238,218,0.35)}
+.row-ext:hover{background:rgba(250,238,218,0.6)}
+.lnum{font-size:10px;font-weight:500;color:var(--color-text-secondary)}
+.badge{display:inline-block;font-size:10px;font-weight:500;padding:1px 7px;border-radius:8px;white-space:nowrap;margin:1px}
+.b-keep{background:#E6F1FB;color:#0C447C}
+.b-add{background:#EAF3DE;color:#27500A}
+.b-ext{background:#FAEEDA;color:#633806}
+.b-crit{background:#FAECE7;color:#712B13}
+.b-docker{background:#EEEDFE;color:#3C3489}
+.stk{display:inline-block;font-size:10px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:4px;padding:1px 6px;margin:1px;color:var(--color-text-primary)}
+.stk-a{background:#EAF3DE;border-color:#97C459;color:#27500A}
+.stk-e{background:#FAEEDA;border-color:#EF9F27;color:#633806}
+.ph-sep td{background:var(--color-background-tertiary);font-size:10px;font-weight:500;color:var(--color-text-secondary);padding:5px 11px;letter-spacing:0.04em}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--color-text-secondary)}
+.ld{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.gap-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:1rem}
+.gap-card{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.gc-head{padding:9px 13px;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.gc-body{padding:10px 13px}
+.gc-row{display:flex;align-items:baseline;gap:8px;padding:4px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11.5px}
+.gc-row:last-child{border-bottom:none}
+.gc-stat{font-size:10px;font-weight:500;padding:1px 7px;border-radius:8px;white-space:nowrap;flex-shrink:0}
+.s-ok{background:#E1F5EE;color:#085041}
+.s-miss{background:#FAECE7;color:#712B13}
+.s-add{background:#EAF3DE;color:#27500A}
+.flow-box{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px;margin-bottom:10px}
+.flow-title{font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.04em}
+.flow-chain{display:flex;flex-wrap:wrap;align-items:stretch;gap:0}
+.fn{border:0.5px solid var(--color-border-tertiary);border-radius:6px;padding:7px 10px;font-size:11px;color:var(--color-text-primary);line-height:1.4;flex:0 0 auto;max-width:130px}
+.fn .fl{font-size:9px;color:var(--color-text-secondary);display:block;margin-bottom:2px}
+.fn.n-new{border-color:#97C459;background:#EAF3DE;color:#27500A}
+.fn.n-new .fl{color:#3B6D11}
+.fa{display:flex;align-items:center;padding:0 5px;font-size:12px;color:var(--color-text-secondary);font-weight:500}
+.docker-box{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);margin-bottom:10px;overflow:hidden}
+.docker-head{padding:9px 13px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px;font-weight:500;color:var(--color-text-primary)}
+.docker-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0}
+.docker-cell{padding:10px 13px;border-right:0.5px solid var(--color-border-tertiary);border-bottom:0.5px solid var(--color-border-tertiary)}
+.docker-cell:nth-child(2n){border-right:none}
+.docker-cell:nth-last-child(-n+2){border-bottom:none}
+.dc-label{font-size:10px;font-weight:500;color:var(--color-text-secondary);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em}
+.dc-val{font-size:11.5px;color:var(--color-text-primary);line-height:1.5}
+.dc-val .m{font-size:11px;color:var(--color-text-secondary);display:block;margin-top:2px}
+.info-box{border-left:3px solid #185FA5;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;background:var(--color-background-info);padding:9px 13px;font-size:11.5px;color:var(--color-text-info);margin-bottom:10px;line-height:1.5}
+.warn-box{border-left:3px solid #EF9F27;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;background:var(--color-background-warning);padding:9px 13px;font-size:11.5px;color:var(--color-text-warning);margin-bottom:10px;line-height:1.5}
+.sum-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:1rem}
+.sum-c{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px;text-align:center}
+.sum-v{font-size:19px;font-weight:500;color:var(--color-text-primary)}
+.sum-l{font-size:10px;color:var(--color-text-secondary);margin-top:2px}
+</style>
+
+<div class="w">
+<h2 class="sr-only">P1 ile birleştirilmiş production-level SCADA pipeline planı</h2>
+<h1>Birleştirilmiş Production-Level Pipeline</h1>
+<p class="sub">Yeni plan (15 katman) + P1 eksiklikleri · Renk: yeşil=P1'den eklendi · turuncu=P1'den genişletildi · beyaz=zaten vardı</p>
+
+<div class="sum-row">
+  <div class="sum-c"><div class="sum-v">15</div><div class="sum-l">Orijinal katman</div></div>
+  <div class="sum-c"><div class="sum-v">+3</div><div class="sum-l">P1'den yeni katman</div></div>
+  <div class="sum-c"><div class="sum-v">+4</div><div class="sum-l">Mevcut katman genişletildi</div></div>
+  <div class="sum-c"><div class="sum-v">~8</div><div class="sum-l">Hafta ek süre</div></div>
+</div>
+
+<div class="nav">
+  <button class="tab on" onclick="sw('gap',this)">Boşluk analizi</button>
+  <button class="tab" onclick="sw('tbl',this)">Birleşik katman tablosu</button>
+  <button class="tab" onclick="sw('flow',this)">Güncellenmiş veri akışı</button>
+  <button class="tab" onclick="sw('docker',this)">Docker stratejisi (8GB)</button>
+</div>
+
+<div id="gap" class="sec on">
+  <div class="gap-grid">
+    <div class="gap-card">
+      <div class="gc-head">Yeni planda VAR — P1'e göre büyük ilerleme</div>
+      <div class="gc-body">
+        <div class="gc-row"><span class="gc-stat s-ok">TAMAM</span><span>MQTT (Eclipse Mosquitto) — event-driven mimari</span></div>
+        <div class="gc-row"><span class="gc-stat s-ok">TAMAM</span><span>TimescaleDB — PostgreSQL'den çok daha iyi zaman serisi</span></div>
+        <div class="gc-row"><span class="gc-stat s-ok">TAMAM</span><span>Docker containerization — production mindset</span></div>
+        <div class="gc-row"><span class="gc-stat s-ok">TAMAM</span><span>Fault tolerance / retry-reconnect logic</span></div>
+        <div class="gc-row"><span class="gc-stat s-ok">TAMAM</span><span>Python logging — gözlemlenebilirlik</span></div>
+        <div class="gc-row"><span class="gc-stat s-ok">TAMAM</span><span>Tam OPC-UA server/client döngüsü</span></div>
+        <div class="gc-row"><span class="gc-stat s-ok">TAMAM</span><span>Grafana Alert sistemi</span></div>
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gc-head">P1'den eksik — şimdi ekleniyor</div>
+      <div class="gc-body">
+        <div class="gc-row"><span class="gc-stat s-miss">EKSİK</span><span>Modbus TCP — Türkmenistan eski sistemleri için zorunlu</span></div>
+        <div class="gc-row"><span class="gc-stat s-miss">EKSİK</span><span>Data cleaning pipeline — NaN, outlier, noise filtresi</span></div>
+        <div class="gc-row"><span class="gc-stat s-miss">EKSİK</span><span>TimescaleDB retention policy — otomatik veri temizleme</span></div>
+        <div class="gc-row"><span class="gc-stat s-miss">EKSİK</span><span>3-tablo schema — sensor_readings + equipment_metadata + alarm_events</span></div>
+        <div class="gc-row"><span class="gc-stat s-miss">EKSİK</span><span>Batch vs streaming dokümantasyonu — README bölümü</span></div>
+        <div class="gc-row"><span class="gc-stat s-add">EKLENDİ</span><span>Her biri ilgili katmana entegre edildi (aşağıdaki tabloda)</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="info-box">
+    Yeni planın temel hatası: Türkmenistan gerçeğini görmezden geldi. Ülkedeki mevcut altyapının %60-70'i Modbus RTU/TCP ile çalışıyor. Sadece OPC-UA bilen biri burada "teorik mühendis" kalır. İki protokolü birlikte göstermek "hem eski hem yeni sistemi anlıyor" mesajı verir — bu seni farklı kılar.
+  </div>
+</div>
+
+<div id="tbl" class="sec">
+  <div class="legend">
+    <div class="li"><div class="ld" style="background:#EAF3DE;border:0.5px solid #97C459"></div>P1'den yeni katman eklendi</div>
+    <div class="li"><div class="ld" style="background:#FAEEDA;border:0.5px solid #EF9F27"></div>Mevcut katman P1 ile genişletildi</div>
+    <div class="li"><div class="ld" style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary)"></div>Orijinal planda zaten vardı</div>
+  </div>
+  <div class="tbl-wrap">
+  <table>
+  <thead>
+    <tr>
+      <th style="width:4%">#</th>
+      <th style="width:13%">Katman</th>
+      <th style="width:12%">Bileşen</th>
+      <th style="width:14%">Teknoloji</th>
+      <th style="width:8%">Durum</th>
+      <th style="width:26%">Ne Yapılacak — Somut</th>
+      <th style="width:23%">Kazanım / Portfolyo Değeri</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="ph-sep"><td colspan="7">KATMAN 1 — VERİ KAYNAĞI</td></tr>
+    <tr>
+      <td class="lnum">1a</td>
+      <td>Veri Kaynağı</td>
+      <td>OPC-UA Server</td>
+      <td><span class="stk">asyncua</span><span class="stk">Prosys Sim</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>Temperature, pressure, vibration node'ları. 3 sanal ekipman. Gerçekçi noise ekle.</td>
+      <td>Modern SCADA protokolü. Dragon Oil / Petronas standartı.</td>
+    </tr>
+    <tr class="row-new">
+      <td class="lnum">1b</td>
+      <td>Veri Kaynağı</td>
+      <td><strong>Modbus TCP Server</strong></td>
+      <td><span class="stk stk-a">pymodbus</span><span class="stk stk-a">ModRSsim2</span></td>
+      <td><span class="badge b-add">P1'den eklendi</span></td>
+      <td>Aynı 3 ekipmanı Modbus Holding Register olarak da yayınla. OPC-UA ile paralel çalışır. Function Code 03 ile okunur.</td>
+      <td>Türkmengaz/Nebit eski sistemleri. "Hem eski hem yeni protokolü biliyor" kanıtı.</td>
+    </tr>
+    <tr class="ph-sep"><td colspan="7">KATMAN 2-3 — PROTOKOL VE KOLEKSİYON</td></tr>
+    <tr>
+      <td class="lnum">2</td>
+      <td>Protokol</td>
+      <td>OPC-UA Client</td>
+      <td><span class="stk">asyncua</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>Node subscription ile event-driven veri çekme. 1s interval. Wireshark ile trafik analizi yap.</td>
+      <td>Modern endüstriyel standard. Paket analizi adayları ayıran faktör.</td>
+    </tr>
+    <tr class="row-ext">
+      <td class="lnum">3</td>
+      <td>Collector</td>
+      <td>Python Bridge</td>
+      <td><span class="stk">asyncua</span><span class="stk stk-e">pymodbus</span></td>
+      <td><span class="badge b-ext">Genişletildi</span></td>
+      <td>OPC-UA subscription + Modbus polling birleştir. Her iki kaynaktan JSON üret. Ortak veri formatı: {source, equipment_id, tag, value, timestamp, quality}.</td>
+      <td>Çift protokol yönetimi. Gerçek entegrasyon senaryosu.</td>
+    </tr>
+    <tr class="ph-sep"><td colspan="7">KATMAN 4-5 — MESSAGING</td></tr>
+    <tr>
+      <td class="lnum">4</td>
+      <td>Broker</td>
+      <td>MQTT Broker</td>
+      <td><span class="stk">Eclipse Mosquitto</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>Topic yapısı: plant/equipment_id/tag. QoS 1 (at-least-once). Docker container ile çalıştır.</td>
+      <td>Event-driven mimari. IIoT standart mesajlaşma katmanı.</td>
+    </tr>
+    <tr>
+      <td class="lnum">5</td>
+      <td>Consumer</td>
+      <td>MQTT Subscriber</td>
+      <td><span class="stk">paho-mqtt</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>Wildcard subscribe: plant/#. JSON parse. Batch buffer: 100 mesaj veya 5 saniye dolunca yaz.</td>
+      <td>Streaming ingestion. Batch/stream farkını pratikte uygulama.</td>
+    </tr>
+    <tr class="ph-sep"><td colspan="7">KATMAN 5b — VERİ TEMİZLEME (P1'DEN EKLENDİ)</td></tr>
+    <tr class="row-new">
+      <td class="lnum">5b</td>
+      <td><strong>Temizleme</strong></td>
+      <td><strong>Data Cleaning Pipeline</strong></td>
+      <td><span class="stk stk-a">pandas</span><span class="stk stk-a">numpy</span></td>
+      <td><span class="badge b-add">P1'den eklendi</span></td>
+      <td>Consumer → DB arasına cleaning step ekle: (1) NaN / -1 / 9999 değerlerini handle et, (2) Z-score ile anlık spike tespit, (3) 3-nokta rolling median ile gürültü filtresi. Temiz ve ham veriyi ayrı tablolara yaz.</td>
+      <td>Production sistemlerde sensör arızaları çok yaşanır. "Veriyi temiz tutuyor" mülakatta güçlü kanıt.</td>
+    </tr>
+    <tr class="ph-sep"><td colspan="7">KATMAN 6-7 — VERİTABANI</td></tr>
+    <tr>
+      <td class="lnum">6</td>
+      <td>Veritabanı</td>
+      <td>TimescaleDB</td>
+      <td><span class="stk">TimescaleDB</span><span class="stk">Docker</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>PostgreSQL + TimescaleDB extension. Docker container. Hypertable: chunk_time_interval 1 gün.</td>
+      <td>Endüstriyel zaman serisi depolama. Plain PostgreSQL'den 10-100x hızlı sorgu.</td>
+    </tr>
+    <tr class="row-ext">
+      <td class="lnum">7</td>
+      <td>Schema</td>
+      <td><strong>3-Tablo Schema</strong></td>
+      <td><span class="stk stk-e">sensor_readings</span><span class="stk stk-e">equipment_metadata</span><span class="stk stk-e">alarm_events</span></td>
+      <td><span class="badge b-ext">Genişletildi</span></td>
+      <td>Orijinal: sadece hypertable. Ekle: equipment_metadata (id, name, location, protocol, limits) ve alarm_events (hypertable). Index: equipment_id + time. TimescaleDB retention policy: raw 30 gün, compressed 1 yıl.</td>
+      <td>Normalize schema tasarımı. Retention policy. Mülakatta "schema nasıl tasarladın?" sorusuna tam cevap.</td>
+    </tr>
+    <tr class="ph-sep"><td colspan="7">KATMAN 8-11 — GÖRSELLEŞTİRME VE ANALİZ</td></tr>
+    <tr>
+      <td class="lnum">8</td>
+      <td>Dashboard</td>
+      <td>Grafana</td>
+      <td><span class="stk">Grafana OSS</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>TimescaleDB datasource. 4 panel: trend, realtime, equipment status, alarm history. ISA-101 renk kodları.</td>
+      <td>SCADA benzeri izleme. Görsel portfolyo kanıtı.</td>
+    </tr>
+    <tr>
+      <td class="lnum">9</td>
+      <td>Analiz</td>
+      <td>Python Analytics</td>
+      <td><span class="stk">pandas</span><span class="stk">numpy</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>Saatlik/günlük aggregate hesapla. Moving average, std deviation, min/max. Scheduled job (APScheduler).</td>
+      <td>Veri içgörüsü. Veri analisti rollerinde temel beklenti.</td>
+    </tr>
+    <tr>
+      <td class="lnum">10</td>
+      <td>Anomali</td>
+      <td>ML Detection</td>
+      <td><span class="stk">scikit-learn</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>Isolation Forest ile anomali skoru. Threshold: contamination=0.05. Anomali tespiti sonucu alarm_events tablosuna yaz. README: "model production'da nasıl güncellenir?"</td>
+      <td>Predictive maintenance kanıtı. Data science + OT kesişimi nadir ve değerli.</td>
+    </tr>
+    <tr>
+      <td class="lnum">11</td>
+      <td>Alarm</td>
+      <td>Alert System</td>
+      <td><span class="stk">Grafana Alert</span><span class="stk">MQTT</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>Grafana: threshold alert → MQTT publish. Python consumer: alarm_events'e yaz, ISA-18.2 state machine çalıştır (unacked→acked→RTN). Deadband: eşik ±%3.</td>
+      <td>Gerçek SCADA alarm davranışı. ISA-18.2 standardı.</td>
+    </tr>
+    <tr class="ph-sep"><td colspan="7">KATMAN 12-15 — ALTYAPI VE DOKÜMAN</td></tr>
+    <tr>
+      <td class="lnum">12</td>
+      <td>Container</td>
+      <td>Docker</td>
+      <td><span class="stk">Docker Compose</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>docker-compose.yml: TimescaleDB + Mosquitto + Grafana. Python servisleri native çalıştır (8GB RAM için). Detay: Docker stratejisi tabında.</td>
+      <td>Production mindset. "Sistemi başka makineye taşıyabilir misin?" sorusuna cevap.</td>
+    </tr>
+    <tr>
+      <td class="lnum">13</td>
+      <td>Logging</td>
+      <td>Gözlemlenebilirlik</td>
+      <td><span class="stk">Python logging</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>Structured logging: JSON formatında. Log seviyeleri: DEBUG/INFO/WARNING/ERROR. Her servis için ayrı log dosyası. Log rotation: 10MB max, 5 backup.</td>
+      <td>Debug kabiliyeti. "Saha sorunu nasıl çözersin?" sorusuna cevap.</td>
+    </tr>
+    <tr>
+      <td class="lnum">14</td>
+      <td>Reliability</td>
+      <td>Fault Tolerance</td>
+      <td><span class="stk">tenacity</span><span class="stk">asyncio</span></td>
+      <td><span class="badge b-keep">Vardı</span></td>
+      <td>Exponential backoff retry: 1s, 2s, 4s, 8s, max 60s. OPC-UA / MQTT kopma durumunda otomatik reconnect. Circuit breaker: 5 ardışık hata → 30s bekle.</td>
+      <td>Endüstriyel dayanıklılık. "Network koparsa ne olur?" sorusuna cevap.</td>
+    </tr>
+    <tr class="row-ext">
+      <td class="lnum">15</td>
+      <td>Doküman</td>
+      <td><strong>README + Mimari</strong></td>
+      <td><span class="stk">Markdown</span><span class="stk stk-e">draw.io</span></td>
+      <td><span class="badge b-ext">Genişletildi</span></td>
+      <td>Orijinal: mimari diyagram + nasıl çalıştırılır. P1'den ekle: (1) Purdue Model katman haritası, (2) Batch vs Streaming açıklaması, (3) OT güvenlik threat modeli (MITRE ATT&CK ICS), (4) Modbus vs OPC-UA karşılaştırması.</td>
+      <td>İşe alınmayı sağlayan şey. Mülakatçı README okur, kodu değil.</td>
+    </tr>
+  </tbody>
+  </table>
+  </div>
+</div>
+
+<div id="flow" class="sec">
+  <div class="flow-box">
+    <div class="flow-title">Güncellenmiş veri akışı — çift protokol + cleaning katmanı</div>
+    <div class="flow-chain" style="margin-bottom:10px">
+      <div class="fn n-new"><span class="fl">1b — YENİ</span>Modbus TCP Server</div>
+      <div class="fa">→</div>
+      <div class="fn"><span class="fl">3</span>Python Bridge</div>
+      <div class="fa">→</div>
+      <div class="fn"><span class="fl">4</span>MQTT Broker</div>
+      <div class="fa">→</div>
+      <div class="fn"><span class="fl">5</span>MQTT Consumer</div>
+      <div class="fa">→</div>
+      <div class="fn n-new"><span class="fl">5b — YENİ</span>Cleaning Pipeline</div>
+      <div class="fa">→</div>
+      <div class="fn"><span class="fl">6-7</span>TimescaleDB (3 tablo)</div>
+    </div>
+    <div class="flow-chain" style="margin-bottom:10px">
+      <div class="fn"><span class="fl">1a</span>OPC-UA Server</div>
+      <div class="fa">→</div>
+      <div class="fn"><span class="fl">2</span>OPC-UA Client</div>
+      <div class="fa">→</div>
+      <div class="fn"><span class="fl">3</span>Python Bridge</div>
+      <div class="fa">(birleşir yukarıdakiyle)</div>
+    </div>
+    <div class="flow-chain">
+      <div class="fn"><span class="fl">6-7</span>TimescaleDB</div>
+      <div class="fa">→</div>
+      <div class="fn"><span class="fl">8</span>Grafana Dashboard</div>
+      <div class="fa">+</div>
+      <div class="fn"><span class="fl">9-10</span>Analytics + Anomaly</div>
+      <div class="fa">→</div>
+      <div class="fn"><span class="fl">11</span>Alarm + MQTT publish</div>
+      <div class="fa">→</div>
+      <div class="fn n-new"><span class="fl">alarm_events</span>ISA-18.2 state</div>
+    </div>
+  </div>
+  <div class="info-box">
+    Kritik değişiklik: Bridge (Katman 3) artık hem OPC-UA hem Modbus'tan veri alıyor ve ortak JSON formatına dönüştürüyor. Downstream katmanlar hangi protokolden geldiğini bilmek zorunda değil — bu gerçek endüstriyel entegrasyon mimarisi.
+  </div>
+</div>
+
+<div id="docker" class="sec">
+  <div class="warn-box">
+    Orijinal plan "her şeyi Docker'a koy" dedi. 8GB RAM + 2Mbit internet için bu yanlış strateji. TimescaleDB + Mosquitto + Grafana + 4 Python container = ~2.5GB RAM + Docker daemon ~300MB = toplam ~2.8GB. Geliştirme sırasında IDE + tarayıcı ile birlikte 5-6GB'a çıkar. Çözüm: hibrit yaklaşım.
+  </div>
+  <div class="docker-box">
+    <div class="docker-head">Docker'a al (sabit servisler — native kurulumu zor)</div>
+    <div class="docker-grid">
+      <div class="docker-cell">
+        <div class="dc-label">TimescaleDB</div>
+        <div class="dc-val">
+          <span>docker-compose.yml'a ekle</span>
+          <span class="m">Image: ~280MB indirme · RAM: ~350MB</span>
+          <span class="m">Neden Docker: native kurulumu PostgreSQL + extension = karmaşık</span>
+        </div>
+      </div>
+      <div class="docker-cell">
+        <div class="dc-label">Eclipse Mosquitto</div>
+        <div class="dc-val">
+          <span>docker-compose.yml'a ekle</span>
+          <span class="m">Image: ~15MB indirme · RAM: ~15MB</span>
+          <span class="m">Neden Docker: config dosyası tutmak kolay, çok hafif</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="docker-box">
+    <div class="docker-head">Native çalıştır (geliştirme servisleri — Docker gereksiz)</div>
+    <div class="docker-grid">
+      <div class="docker-cell">
+        <div class="dc-label">Grafana</div>
+        <div class="dc-val">
+          <span>grafana.exe / grafana-server</span>
+          <span class="m">Standalone binary, ~150MB RAM</span>
+          <span class="m">Neden native: tarayıcıdan debug ederken Docker restart çok yavaş</span>
+        </div>
+      </div>
+      <div class="docker-cell">
+        <div class="dc-label">Python servisleri (tümü)</div>
+        <div class="dc-val">
+          <span>Virtual env ile çalıştır: venv + pip</span>
+          <span class="m">Her servis ~50-80MB RAM</span>
+          <span class="m">Neden native: kod değiştirince anında restart, debug kolay</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="docker-box">
+    <div class="docker-head">İndirme süresi (2Mbit internet)</div>
+    <div class="docker-grid">
+      <div class="docker-cell">
+        <div class="dc-label">TimescaleDB image</div>
+        <div class="dc-val"><span>~280MB → yaklaşık 20 dakika</span><span class="m">Bir kez indir, sonra offline çalışır</span></div>
+      </div>
+      <div class="docker-cell">
+        <div class="dc-label">Mosquitto image</div>
+        <div class="dc-val"><span>~15MB → 1-2 dakika</span><span class="m">Çok küçük</span></div>
+      </div>
+      <div class="docker-cell">
+        <div class="dc-label">Grafana binary</div>
+        <div class="dc-val"><span>~100MB → ~7 dakika</span><span class="m">grafana.com'dan indir</span></div>
+      </div>
+      <div class="docker-cell">
+        <div class="dc-label">Python paketler (pip)</div>
+        <div class="dc-val"><span>~50MB toplam → ~4 dakika</span><span class="m">requirements.txt ile tek seferlik</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="info-box">
+    Toplam RAM tahmini (tümü çalışırken): TimescaleDB ~350MB + Mosquitto ~15MB + Docker daemon ~250MB + Grafana ~150MB + Python servisleri ~400MB + IDE ~500MB + Tarayıcı ~400MB = yaklaşık 2.1GB. 8GB RAM'de konforlu. Swap'a düşme riski yok.
+  </div>
+</div>
+
+</div>
+<script>
+function sw(id,btn){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  btn.classList.add('on');
+}
+</script>
