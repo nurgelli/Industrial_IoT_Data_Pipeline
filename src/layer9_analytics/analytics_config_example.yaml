@@ -1,0 +1,22 @@
+# Example config for Layer 9 Analytics/ML
+analytics:
+  scheduler:
+    type: 'apscheduler'
+  jobs:
+    - name: 'anomaly_detection'
+      schedule: 'interval'
+      seconds: 60
+anomaly_detection:
+  algorithm: 'isolation_forest'
+  model:
+    contamination: 0.05
+    n_estimators: 100
+    random_state: 42
+  training:
+    lookback_hours: 168
+    min_samples: 1000
+    retraining_interval_hours: 24
+  scoring:
+    anomaly_score_threshold: -0.5
+    alert_on_anomaly: true
+    alert_channel: 'mqtt'

@@ -5,6 +5,7 @@
 **Portfolio Projesi**: Türkmenistan'daki enerji tesislerinde kullanılan eski (Modbus RTU/TCP) ve yeni (OPC-UA) SCADA protokollerini birleştiren production-level veri pipeline.
 
 ### Temel Özellikler
+
 - ✅ **Dual Protocol Support**: OPC-UA (modern) + Modbus TCP (eski sistemler)
 - ✅ **Event-Driven Architecture**: MQTT broker ile asynchronous mesajlaşma
 - ✅ **Time-Series Database**: TimescaleDB (PostgreSQL + extension)
@@ -17,20 +18,20 @@
 
 ## 🏗️ Mimari Katmanlar
 
-| # | Katman | Bileşen | Teknoloji | Durum |
-|---|--------|---------|-----------|-------|
-| **1a** | Veri Kaynağı | OPC-UA Server | asyncua | ✅ |
-| **1b** | Veri Kaynağı | **Modbus TCP Server** | pymodbus | 🆕 |
-| **2** | Protokol | OPC-UA Client | asyncua | ✅ |
-| **3** | Collector | **Python Bridge (Dual)** | asyncua + pymodbus | ⚡ |
-| **4** | Broker | MQTT Broker | Eclipse Mosquitto | ✅ |
-| **5** | Consumer | MQTT Subscriber | paho-mqtt | ✅ |
-| **5b** | Temizleme | **Data Cleaning Pipeline** | pandas + numpy | 🆕 |
-| **6-7** | DB | **TimescaleDB (3-tablo schema)** | PostgreSQL + extension | ⚡ |
-| **8** | Dashboard | Grafana | Grafana OSS | ✅ |
-| **9-10** | Analiz | Analytics + ML | pandas + scikit-learn | ✅ |
-| **11** | Alarm | Alert System | Grafana + MQTT | ✅ |
-| **12-15** | DevOps | Docker + Docs | Docker Compose | ✅ |
+| #         | Katman       | Bileşen                          | Teknoloji              | Durum |
+| --------- | ------------ | -------------------------------- | ---------------------- | ----- |
+| **1a**    | Veri Kaynağı | OPC-UA Server                    | asyncua                | ✅    |
+| **1b**    | Veri Kaynağı | **Modbus TCP Server**            | pymodbus               | 🆕    |
+| **2**     | Protokol     | OPC-UA Client                    | asyncua                | ✅    |
+| **3**     | Collector    | **Python Bridge (Dual)**         | asyncua + pymodbus     | ⚡    |
+| **4**     | Broker       | MQTT Broker                      | Eclipse Mosquitto      | ✅    |
+| **5**     | Consumer     | MQTT Subscriber                  | paho-mqtt              | ✅    |
+| **5b**    | Temizleme    | **Data Cleaning Pipeline**       | pandas + numpy         | 🆕    |
+| **6-7**   | DB           | **TimescaleDB (3-tablo schema)** | PostgreSQL + extension | ⚡    |
+| **8**     | Dashboard    | Grafana                          | Grafana OSS            | ✅    |
+| **9-10**  | Analiz       | Analytics + ML                   | pandas + scikit-learn  | ✅    |
+| **11**    | Alarm        | Alert System                     | Grafana + MQTT         | ✅    |
+| **12-15** | DevOps       | Docker + Docs                    | Docker Compose         | ✅    |
 
 ---
 
@@ -92,28 +93,33 @@ docker ps
 ```
 
 **Beklenen çıktı**:
+
 - `timescaledb` (PostgreSQL + extension)
 - `mosquitto` (MQTT broker)
 
 ### 3️⃣ Native Servisleri Başlat (Python + Grafana)
 
 Terminal 1 - OPC-UA Server + Modbus Server:
+
 ```bash
 python src/layer1_data_source/opc_ua_server.py &
 python src/layer1_data_source/modbus_server.py &
 ```
 
 Terminal 2 - Python Bridge (Dual Protocol):
+
 ```bash
 python src/layer3_python_bridge/bridge.py
 ```
 
 Terminal 3 - MQTT Consumer + Cleaning:
+
 ```bash
 python src/layer5_mqtt_consumer/consumer.py
 ```
 
 Terminal 4 - Grafana:
+
 ```bash
 # Grafana binary çalıştır (Windows)
 grafana\bin\grafana-server.exe
@@ -208,39 +214,40 @@ PROJECT-1/
 ## 🔧 Konfigürasyon
 
 ### `config/settings.yaml`
+
 ```yaml
 # OPC-UA
 opc_ua:
-  endpoint: "opc.tcp://localhost:4840/"
+  endpoint: 'opc.tcp://localhost:4840/'
   namespace_idx: 2
-  
+
 # Modbus TCP
 modbus:
-  host: "localhost"
+  host: 'localhost'
   port: 502
-  
+
 # MQTT
 mqtt:
-  broker: "localhost"
+  broker: 'localhost'
   port: 1883
-  topic_prefix: "plant/"
+  topic_prefix: 'plant/'
   qos: 1
-  
+
 # TimescaleDB
 database:
-  host: "localhost"
+  host: 'localhost'
   port: 5432
-  user: "postgres"
-  password: "postgres_pwd"
-  dbname: "scada_prod"
-  
+  user: 'postgres'
+  password: 'postgres_pwd'
+  dbname: 'scada_prod'
+
 # Data Cleaning
 cleaning:
-  nan_handling: "drop"        # drop, ffill, bfill
+  nan_handling: 'drop' # drop, ffill, bfill
   spike_zscore_threshold: 3
   spike_window: 10
   median_window: 3
-  
+
 # Anomaly Detection
 anomaly:
   contamination: 0.05
@@ -252,12 +259,14 @@ anomaly:
 ## 📈 Batch vs Streaming (Önemli Kavram)
 
 ### Batch Processing (Layer 9: Analytics)
+
 - **Ne**: Saatlik/günlük aggregate hesaplamalar
 - **Nasıl**: APScheduler ile scheduled job
 - **Kod**: `src/layer9_analytics/analytics.py`
 - **Örnek**: Moving average, std deviation, daily statistics
 
 ### Streaming Processing (Layer 5-5b)
+
 - **Ne**: Her gelen MQTT mesajı işleme (batch buffer)
 - **Nasıl**: 100 mesaj veya 5 saniye → DB yazma
 - **Kod**: `src/layer5_mqtt_consumer/consumer.py` + `layer5b_cleaning/cleaner.py`
@@ -267,15 +276,15 @@ anomaly:
 
 ## 🛡️ Modbus vs OPC-UA (Portfolio Farkı)
 
-| Özellik | Modbus TCP | OPC-UA |
-|---------|-----------|--------|
-| **Protokol** | Binary, TCP üstü | Binary, TCP/TLS üstü |
-| **Port** | 502 | 4840 |
-| **Veri Modeli** | Simple (register) | Complex (node tree) |
-| **Güvenlik** | Yok | TLS + authentication |
-| **Türkmenistan** | %60-70 eski sistemler | Yeni kurulumlar |
-| **Portfolio Değeri** | "Eski sistemleri anlıyor" | "Modern SCADA expert" |
-| **Kod Örneği** | `src/layer1_data_source/modbus_server.py` | `src/layer1_data_source/opc_ua_server.py` |
+| Özellik              | Modbus TCP                                | OPC-UA                                    |
+| -------------------- | ----------------------------------------- | ----------------------------------------- |
+| **Protokol**         | Binary, TCP üstü                          | Binary, TCP/TLS üstü                      |
+| **Port**             | 502                                       | 4840                                      |
+| **Veri Modeli**      | Simple (register)                         | Complex (node tree)                       |
+| **Güvenlik**         | Yok                                       | TLS + authentication                      |
+| **Türkmenistan**     | %60-70 eski sistemler                     | Yeni kurulumlar                           |
+| **Portfolio Değeri** | "Eski sistemleri anlıyor"                 | "Modern SCADA expert"                     |
+| **Kod Örneği**       | `src/layer1_data_source/modbus_server.py` | `src/layer1_data_source/opc_ua_server.py` |
 
 **Stratejik Mesaj**: "Her iki protokolü production'da kullanabilirim."
 
@@ -304,6 +313,7 @@ anomaly:
 ### 3 Tablo:
 
 **1. sensor_readings** (Hypertable — time-series)
+
 ```sql
 CREATE TABLE sensor_readings (
   time TIMESTAMPTZ NOT NULL,
@@ -319,6 +329,7 @@ SELECT create_hypertable('sensor_readings', 'time', if_not_exists => TRUE);
 ```
 
 **2. equipment_metadata** (Normal table)
+
 ```sql
 CREATE TABLE equipment_metadata (
   id SERIAL PRIMARY KEY,
@@ -332,6 +343,7 @@ CREATE TABLE equipment_metadata (
 ```
 
 **3. alarm_events** (Hypertable — ISA-18.2)
+
 ```sql
 CREATE TABLE alarm_events (
   time TIMESTAMPTZ NOT NULL,
@@ -346,6 +358,7 @@ SELECT create_hypertable('alarm_events', 'time', if_not_exists => TRUE);
 ```
 
 **Retention Policy**:
+
 ```sql
 -- Raw veri: 30 gün
 SELECT add_retention_policy('sensor_readings', INTERVAL '30 days', if_not_exists => TRUE);
@@ -359,14 +372,17 @@ SELECT add_compression_policy('sensor_readings', INTERVAL '1 year', if_not_exist
 ## 🐳 Docker Stratejisi (8GB RAM için)
 
 ### Docker'a Al ✅
+
 - **TimescaleDB**: PostgreSQL + extension kurulumu karmaşık
 - **Mosquitto**: Hafif, config yönetimi kolay
 
 ### Native Çalıştır ⚡
+
 - **Grafana**: Debug sırasında tarayıcı reload hızlıdır
 - **Python Servisleri**: Kod değişikliği → anında restart
 
 ### RAM Dağılımı
+
 ```
 TimescaleDB         ~350MB
 Mosquitto           ~15MB
@@ -384,6 +400,7 @@ Toplam            ~2.1GB (8GB'ın %26'sı — konforlu!)
 ## 🔐 Logging & Observability
 
 **Structured Logging** (JSON format):
+
 ```python
 # Her servis kendi log dosyasına
 import logging
@@ -400,6 +417,7 @@ logger.addHandler(handler)
 ```
 
 **Log Seviyeleri**:
+
 - `DEBUG`: Detailed flow (subscription events)
 - `INFO`: Key actions (connection, batch write)
 - `WARNING`: Anomalies (spike detected)
@@ -410,6 +428,7 @@ logger.addHandler(handler)
 ## 🧪 Test Senaryosu
 
 ### 1. Dual Protocol Bağlantı
+
 ```bash
 python src/layer1_data_source/opc_ua_server.py &
 python src/layer1_data_source/modbus_server.py &
@@ -422,6 +441,7 @@ python src/layer3_python_bridge/bridge.py
 ```
 
 ### 2. MQTT Mesajlaşma
+
 ```bash
 # Terminal A: Consumer başlat
 python src/layer5_mqtt_consumer/consumer.py
@@ -435,6 +455,7 @@ mosquitto_pub -h localhost -t "plant/pump_1/temperature" -m '{"value": 45.2, "ti
 ```
 
 ### 3. Data Cleaning
+
 ```bash
 # Consumer içinden anomali inject et
 # Spike: 45.2°C → 150°C (normal 30-50°C aralığı)
@@ -446,6 +467,7 @@ mosquitto_pub -h localhost -t "plant/pump_1/temperature" -m '{"value": 45.2, "ti
 ```
 
 ### 4. TimescaleDB Doğrulama
+
 ```sql
 -- Connection
 psql -h localhost -U postgres -d scada_prod
@@ -455,9 +477,9 @@ SELECT tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablena
 FROM pg_tables WHERE tablename IN ('sensor_readings', 'equipment_metadata', 'alarm_events');
 
 -- Son 10 kayıt (son 1 saat)
-SELECT time, equipment_id, tag, value, quality, source FROM sensor_readings 
-WHERE time > NOW() - INTERVAL '1 hour' 
-ORDER BY time DESC 
+SELECT time, equipment_id, tag, value, quality, source FROM sensor_readings
+WHERE time > NOW() - INTERVAL '1 hour'
+ORDER BY time DESC
 LIMIT 10;
 
 -- Alarm history
@@ -516,4 +538,3 @@ SELECT * FROM alarm_events WHERE state != 'RTN' ORDER BY time DESC;
 ## 📄 Lisans
 
 MIT License — Açık kaynak, akademik / portfolyo kullanımı
-

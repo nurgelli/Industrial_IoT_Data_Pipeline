@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: postgres_pwd
       POSTGRES_DB: scada_prod
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       # Veri kalıcılığı için volume
       - timescaledb_data:/var/lib/postgresql/data
@@ -21,7 +21,7 @@ services:
       # Retention policy script
       - ./src/layer6_timescaledb/retention_policy.sql:/docker-entrypoint-initdb.d/02_retention_policy.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,10 +29,10 @@ services:
     networks:
       - scada_network
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: '10m'
+        max-file: '3'
 
   # ============================================
   # Eclipse Mosquitto (MQTT Broker)
@@ -41,8 +41,8 @@ services:
     image: eclipse-mosquitto:latest
     container_name: scada_mosquitto
     ports:
-      - "1883:1883"
-      - "9001:9001"  # WebSocket port
+      - '1883:1883'
+      - '9001:9001' # WebSocket port
     volumes:
       # Mosquitto konfigürasyonu
       - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf
@@ -50,17 +50,17 @@ services:
       - mosquitto_data:/mosquitto/data
       - mosquitto_logs:/mosquitto/log
     environment:
-      TZ: "Asia/Ashkhabad"
+      TZ: 'Asia/Ashkhabad'
     restart: unless-stopped
     networks:
       - scada_network
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: '10m'
+        max-file: '3'
     depends_on:
-      - timescaledb  # DB hazırlanana kadar bekle
+      - timescaledb # DB hazırlanana kadar bekle
 
   # ============================================
   # pgAdmin (Optional - Database Management UI)
@@ -74,7 +74,7 @@ services:
       PGADMIN_CONFIG_PROXY_X_FOR_COUNT: 1
       PGADMIN_CONFIG_PROXY_X_PROTO_COUNT: 1
     ports:
-      - "5050:80"
+      - '5050:80'
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     restart: unless-stopped
@@ -82,6 +82,40 @@ services:
       - scada_network
     depends_on:
       - timescaledb
+
+  # ============================================
+  # Grafana (Dashboard & Visualization)
+  # ============================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: scada_grafana
+    ports:
+      - '3000:3000'
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-piechart-panel
+      GF_SECURITY_ALLOW_EMBED_INITIATION: 'true'
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+    depends_on:
+      - timescaledb
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - scada_network
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
 
 volumes:
   timescaledb_data:
@@ -91,6 +125,8 @@ volumes:
   mosquitto_logs:
     driver: local
   pgadmin_data:
+    driver: local
+  grafana_data:
     driver: local
 
 networks:

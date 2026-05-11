@@ -1,0 +1,31 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "SCADA Overview",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "Sensor Data",
+        "targets": [
+          {
+            "format": "time_series",
+            "group": [],
+            "metric": "",
+            "refId": "A",
+            "rawSql": "SELECT time, value FROM sensor_data WHERE $__timeFilter(time)",
+            "datasource": "TimescaleDB"
+          }
+        ],
+        "datasource": "TimescaleDB",
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 }
+      }
+    ],
+    "schemaVersion": 30,
+    "version": 1
+  },
+  "overwrite": true
+}
