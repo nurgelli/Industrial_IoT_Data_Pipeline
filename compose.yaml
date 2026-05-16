@@ -1,0 +1,71 @@
+services:
+  modbus-server:
+    image: oitc/modbus-server:2.1.0
+    container_name: modbus_server_docker
+    ports:
+      - "5020:5020"
+    restart: always
+    environment:
+      - LOG_LEVEL=info
+    networks:
+      - industrial_network
+
+  mosquitto:
+    image: eclipse-mosquitto:2.1-alpine
+    container_name: mqtt_broker_docker
+    ports:
+      - "1883:1883"
+    restart: always
+    command: mosquitto -c /mosquitto/config/mosquitto.conf
+    # Hafif yapıyı korumak için inline konfigürasyon simülasyonu
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - industrial_network
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: timescaledb_docker
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123
+      - POSTGRES_DB=scada_db
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    # 8GB RAM ortamı için kaynak kısıtlaması ve optimizasyon
+    command: >
+      postgres
+      -c shared_buffers=1GB
+      -c work_mem=32MB
+      -c maintenance_work_mem=256MB
+      -c effective_cache_size=3GB
+      -c max_wal_size=2GB
+      -c min_wal_size=512MB
+    networks:
+      - industrial_network
+  
+  grafana:
+    image: grafana/grafana-oss:10.4.2
+    container_name: scada_grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=123 # İlk giriş şifresi (İsteğe göre değiştirilebilir)
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - timescaledb # TimescaleDB konteynerinizin servis adı neyse onunla eşleşmeli
+    networks:
+      - industrial_network
+
+# Dosyanın en altında yer alan volumes: kısmına ekleyin:
+volumes:
+  timescaledb_data:
+  grafana_data:
+
+networks:
+  industrial_network:
+    driver: bridge

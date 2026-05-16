@@ -33,41 +33,46 @@ def generate_next_value(current, drift, noise_std, min_val, max_val):
     return float(np.clip(new_val, min_val, max_val))
 
 async def main():
-    # --- 1. OPC-UA SERVER YAPILANDIRMASI ---
+    #! --- 1. OPC-UA SERVER YAPILANDIRMASI ---
     opc_server = Server()
     await opc_server.init()
     opc_server.set_endpoint("opc.tcp://127.0.0.1:4840/freeopcua/server/")
-    opc_server.set_server_name("MPI O&G Production Simulator")
+    opc_server.set_server_name("Production Simulator")
 
     # Namespace tanımlama
     uri = "http://mpi.oilgas.sim"
     idx = await opc_server.register_namespace(uri)
 
-    # Nesne Yapısı (Object Tree) oluşturma
+    # Nesne Yapısı (Object Tree) oluşturma - PARENT İLK!
     objects = opc_server.nodes.objects
-    og_folder = await objects.add_folder(idx, "OilGas_Production")
-    
-    pump_obj = await og_folder.add_folder(idx, "Centrifugal_Pump")
-    comp_obj = await og_folder.add_folder(idx, "Gas_Compressor")
-    tank_obj = await og_folder.add_folder(idx, "Storage_Tank")
+   
+   
+    # simul_factory.py dosyasındaki ilgili kısmı şu şekilde revize et:
 
-    # OPC-UA Değişkenlerini Tanımlama
+# Klasörler (Folders)
+    og_folder = await objects.add_folder(ua.NodeId(0, idx), ua.QualifiedName("OilGas_Production", idx))
+    pump_obj = await og_folder.add_folder(ua.NodeId(0, idx), ua.QualifiedName("Centrifugal_Pump", idx))
+    comp_obj = await og_folder.add_folder(ua.NodeId(0, idx), ua.QualifiedName("Gas_Compressor", idx))
+    tank_obj = await og_folder.add_folder(ua.NodeId(0, idx), ua.QualifiedName("Storage_Tank", idx))
+
+    # Değişkenler (Variables)
     opc_nodes = {
-        "pump_flow": await pump_obj.add_variable(idx, "FlowRate", process_state["pump_flow"], ua.VariantType.Float),
-        "pump_suc_pres": await pump_obj.add_variable(idx, "SuctionPressure", process_state["pump_suc_pres"], ua.VariantType.Float),
-        "pump_dis_pres": await pump_obj.add_variable(idx, "DischargePressure", process_state["pump_dis_pres"], ua.VariantType.Float),
-        "pump_vib": await pump_obj.add_variable(idx, "Vibration", process_state["pump_vib"], ua.VariantType.Float),
+        "pump_flow": await pump_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("Flow", idx), process_state["pump_flow"], ua.VariantType.Double),
+        "pump_suc_pres": await pump_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("SuctionPressure", idx), process_state["pump_suc_pres"], ua.VariantType.Double),
+        "pump_dis_pres": await pump_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("DischargePressure", idx), process_state["pump_dis_pres"], ua.VariantType.Double),
+        "pump_vib": await pump_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("Vibration", idx), process_state["pump_vib"], ua.VariantType.Double),
         
-        "comp_bearing_temp": await comp_obj.add_variable(idx, "BearingTemperature", process_state["comp_bearing_temp"], ua.VariantType.Float),
-        "comp_rpm": await comp_obj.add_variable(idx, "RPM", process_state["comp_rpm"], ua.VariantType.Float), # <=== revolutions per min comp
+        "comp_bearing_temp": await comp_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("BearingTemperature", idx), process_state["comp_bearing_temp"], ua.VariantType.Double),
+        "comp_rpm": await comp_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("RPM", idx), process_state["comp_rpm"], ua.VariantType.Double),
         
-        "tank_level": await tank_obj.add_variable(idx, "Level", process_state["tank_level"], ua.VariantType.Float),
-        "tank_temp": await tank_obj.add_variable(idx, "Temperature", process_state["tank_temp"], ua.VariantType.Float),
+        "tank_level": await tank_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("Level", idx), process_state["tank_level"], ua.VariantType.Double),
+        "tank_temp": await tank_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("Temperature", idx), process_state["tank_temp"], ua.VariantType.Double),
     }
 
     # Tüm OPC-UA değişkenlerini yazılabilir (Writable) yapmak
-    for node in opc_nodes.values():
+    for key, node in opc_nodes.items():
         await node.set_writable()
+        logger.info(f"✓ OPC-UA Variable created and writable: {key}")
 
     # --- 2. VERİ GÖNDERİM DÖNGÜSÜ ---
     logger.info("OPC-UA Server starting on port: 4840...")
@@ -96,7 +101,7 @@ async def main():
             for key, node in opc_nodes.items():
                 await node.write_value(process_state[key])
 
-            # --- B. Modbus TCP Güncelleme (Scaled uint16) ---
+            # !--- B. Modbus TCP Güncelleme (Scaled uint16) ---
             try:
                 # Holding register'lara yazılacak paket düzeni (Adres sırasıyla)
                 modbus_payload = [
@@ -114,7 +119,7 @@ async def main():
                 
                 # Modbus Function Code 16 (Write Multiple Registers) kullanımı
                 # Başlangıç adresi 0 (Protokol seviyesinde 0 = saniyede okunan 40001 demektir)
-                response = modbus_client.write_registers(0, modbus_payload, slave=1)
+                response = modbus_client.write_registers(0, modbus_payload, device_id=0)
                 if response.isError():
                     logger.warning(f"Modbus writable error: {response}")
             except Exception as e:
