@@ -1,0 +1,9 @@
+services:
+  modbus-server:
+    image: oitc/modbus-server:2.1.0
+    container_name: modbus_server_docker
+    ports:
+      - "5020:502"
+    restart: always
+    environment:
+      - LOG_LEVEL=info
