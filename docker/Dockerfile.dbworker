@@ -1,0 +1,31 @@
+# =============================================================================
+# Dockerfile: db-worker (MQTT → TimescaleDB Ingestion Worker)
+# =============================================================================
+# Bu servis hem MQTT'ye hem de TimescaleDB'ye bağımlıdır.
+# En geç başlaması gereken servis budur → depends_on zincirinin sonu
+# =============================================================================
+
+FROM inddustrial-base:1.0
+
+LABEL description="Async MQTT-to-TimescaleDB Ingestion Worker with Data Quality Engine"
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --default-timeout=1000 --retries=10 -r requirements.txt
+
+COPY db_worker.py .
+
+
+ENV MQTT_HOST=mosquitto
+ENV MQTT_PORT=1883
+ENV DB_URL=postgresql://postgres:123@timescaledb:5432/scada_db
+ENV PYTHONUNBUFFERED=1
+
+
+HEALTHCHECK --interval=15s --timeout=10s --start-period=45s --retries=5 \
+    CMD python -c "import asyncpg, asyncio; asyncio.run(asyncpg.connect('postgresql://postgres:scada_pass@timescaledb:5432/scada_db'))" \
+    || exit 1
+
+CMD ["python", "-u", "db_worker.py"]

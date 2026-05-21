@@ -1,0 +1,27 @@
+FROM inddustrial-base:1.0
+
+LABEL description="Industrial Protocol Bridge: OPC-UA + Modbus TCP → MQTT"
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --default-timeout=1000 --retries=10 -r requirements.txt
+
+COPY bridge.py .
+
+
+ENV MQTT_HOST=mosquitto
+ENV MQTT_PORT=1883
+ENV MODBUS_HOST=modbus-server
+ENV MODBUS_PORT=5020
+ENV OPC_URL=opc.tcp://simul-factory:4840/freeopcua/server/
+ENV PYTHONUNBUFFERED=1
+
+
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+    CMD python -c "import paho.mqtt.client as mqtt; c=mqtt.Client(mqtt.CallbackAPIVersion.VERSION2); c.connect('mosquitto', 1883, 5); c.disconnect()" \
+    || exit 1
+
+CMD ["python", "-u", "bridge.py"]

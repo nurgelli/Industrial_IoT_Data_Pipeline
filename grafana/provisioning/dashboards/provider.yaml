@@ -1,0 +1,18 @@
+# =============================================================================
+# Dashboard Provider
+# File path: /etc/grafana/provisioning/dashboards/
+# local path: ./grafana/provisioning/dashboards/provider.yaml
+
+apiVersion: 1
+
+providers:
+  - name: SCADA-Dashboards                 
+    orgId: 1                               
+    folder: "SCADA Pipeline"               
+    folderUid: scada-pipeline-folder       
+    type: file                             
+    disableDeletion: false                 
+    updateIntervalSeconds: 30              
+    allowUiUpdates: true                   
+    options:
+      path: /var/lib/grafana/dashboards    

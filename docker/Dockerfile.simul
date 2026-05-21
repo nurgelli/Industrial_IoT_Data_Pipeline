@@ -1,0 +1,24 @@
+FROM inddustrial-base:1.0
+
+
+LABEL maintainer="SCADA Pipeline Project"
+LABEL description="OPC-UA Simulation Server + Modbus TCP Data Writer"
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --default-timeout=1000 --retries=10 -r requirements.txt
+
+COPY simul_factory.py .
+ENV MODBUS_HOST=modbus-server
+ENV MODBUS_PORT=5020
+ENV OPC_PORT=4840
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 4840
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import socket; s=socket.socket(); s.settimeout(3); s.connect(('localhost', 4840)); s.close()" \
+    || exit 1
+CMD ["python", "-u", "simul_factory.py"]

@@ -4,17 +4,18 @@ import random
 import numpy as np
 from asyncua import Server, ua
 from pymodbus.client import ModbusTcpClient
+import os
 
-# Log yapılandırması
+# Logs
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
-logger = logging.getLogger("SimulationFactory")
+logger = logging.getLogger("Simulation_Factory")
 
-# Modbus Ayarları
-MODBUS_HOST = "127.0.0.1"
-MODBUS_PORT = 5020
+# Modbus config
+MODBUS_HOST = os.getenv("MODBUS_HOST", "127.0.0.1")
+MODBUS_PORT = int(os.getenv("MODBUS_PORT", "5020"))
 modbus_client = ModbusTcpClient(MODBUS_HOST, port=MODBUS_PORT)
 
-# Başlangıç Proses Değerleri (Base Values)
+# base val
 process_state = {
     "pump_flow": 120.0,
     "pump_suc_pres": 2.5,
@@ -27,35 +28,32 @@ process_state = {
 }
 
 def generate_next_value(current, drift, noise_std, min_val, max_val):
-    """Gerçekçi sensör salınımı için Gaussian Noise eklenmiş Random Walk"""
+    # Gaussian Noise eklenmiş Random Walk
     noise = np.random.normal(0, noise_std)
     new_val = current + drift + noise
     return float(np.clip(new_val, min_val, max_val))
 
 async def main():
-    #! --- 1. OPC-UA SERVER YAPILANDIRMASI ---
     opc_server = Server()
     await opc_server.init()
-    opc_server.set_endpoint("opc.tcp://127.0.0.1:4840/freeopcua/server/")
+    opc_server.set_endpoint("opc.tcp://0.0.0.0:4840/freeopcua/server/")
     opc_server.set_server_name("Production Simulator")
 
-    # Namespace tanımlama
+    # Namespace defining
     uri = "http://mpi.oilgas.sim"
     idx = await opc_server.register_namespace(uri)
 
-    # Nesne Yapısı (Object Tree) oluşturma - PARENT İLK!
+    # Object tree parent
     objects = opc_server.nodes.objects
-   
-   
-    # simul_factory.py dosyasındaki ilgili kısmı şu şekilde revize et:
 
-# Klasörler (Folders)
+# Folders
     og_folder = await objects.add_folder(ua.NodeId(0, idx), ua.QualifiedName("OilGas_Production", idx))
+    
     pump_obj = await og_folder.add_folder(ua.NodeId(0, idx), ua.QualifiedName("Centrifugal_Pump", idx))
     comp_obj = await og_folder.add_folder(ua.NodeId(0, idx), ua.QualifiedName("Gas_Compressor", idx))
     tank_obj = await og_folder.add_folder(ua.NodeId(0, idx), ua.QualifiedName("Storage_Tank", idx))
 
-    # Değişkenler (Variables)
+    # Variables
     opc_nodes = {
         "pump_flow": await pump_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("Flow", idx), process_state["pump_flow"], ua.VariantType.Double),
         "pump_suc_pres": await pump_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("SuctionPressure", idx), process_state["pump_suc_pres"], ua.VariantType.Double),
@@ -69,23 +67,23 @@ async def main():
         "tank_temp": await tank_obj.add_variable(ua.NodeId(0, idx), ua.QualifiedName("Temperature", idx), process_state["tank_temp"], ua.VariantType.Double),
     }
 
-    # Tüm OPC-UA değişkenlerini yazılabilir (Writable) yapmak
+    # opc-ua writable
     for key, node in opc_nodes.items():
         await node.set_writable()
         logger.info(f"✓ OPC-UA Variable created and writable: {key}")
 
-    # --- 2. VERİ GÖNDERİM DÖNGÜSÜ ---
+    # data sending loop
     logger.info("OPC-UA Server starting on port: 4840...")
     async with opc_server:
         logger.info("Checking modbus tcp continer connections...")
         if not modbus_client.connect():
-            logger.error(f"Modbus Server ({MODBUS_HOST}:{MODBUS_PORT}) cant connect! Docker is working?")
+            logger.error(f"Modbus Server ({MODBUS_HOST}:{MODBUS_PORT}) cant connect! is Docker  working?")
             return
 
         logger.info("Simulation factory is working. Data production started.")
         
         while True:
-            # Proses Değerlerini Güncelle (Simülasyon Matematiği)
+            # Process value updating
             process_state["pump_flow"] = generate_next_value(process_state["pump_flow"], 0.05, 0.2, 0, 200)
             process_state["pump_suc_pres"] = generate_next_value(process_state["pump_suc_pres"], 0.0, 0.02, 1, 5)
             process_state["pump_dis_pres"] = generate_next_value(process_state["pump_dis_pres"], 0.1, 0.15, 20, 45)
@@ -97,13 +95,13 @@ async def main():
             process_state["tank_level"] = generate_next_value(process_state["tank_level"], -0.02, 0.05, 0, 100)
             process_state["tank_temp"] = generate_next_value(process_state["tank_temp"], 0.02, 0.1, -10, 50)
 
-            # --- A. OPC-UA Güncelleme (Native Float) ---
+            # opc-ua updateing
             for key, node in opc_nodes.items():
                 await node.write_value(process_state[key])
 
-            # !--- B. Modbus TCP Güncelleme (Scaled uint16) ---
+            # ! Modbus TCP update Scaled uint16
             try:
-                # Holding register'lara yazılacak paket düzeni (Adres sırasıyla)
+                # Holding register packet set address 
                 modbus_payload = [
                     int(process_state["pump_flow"] * 10),          # 40001
                     int(process_state["pump_suc_pres"] * 100),     # 40002
@@ -117,8 +115,8 @@ async def main():
                     int(process_state["tank_temp"] * 10)           # 40010
                 ]
                 
-                # Modbus Function Code 16 (Write Multiple Registers) kullanımı
-                # Başlangıç adresi 0 (Protokol seviyesinde 0 = saniyede okunan 40001 demektir)
+                # Modbus Function Code 16 (Write Multiple Registers
+                # First address 0 (Protokol level 0 = second readed 40001 )
                 response = modbus_client.write_registers(0, modbus_payload, device_id=0)
                 if response.isError():
                     logger.warning(f"Modbus writable error: {response}")
@@ -127,7 +125,7 @@ async def main():
                 modbus_client.connect()
 
             logger.debug(f"Current flow: {process_state['pump_flow']:.2f} m3/h | Tank Level: {process_state['tank_level']:.2f} %")
-            await asyncio.sleep(1) # 1 Saniyelik endüstriyel tarama (scan rate) döngüsü
+            await asyncio.sleep(1) # 1 secodn scan rate
 
 if __name__ == "__main__":
     try:

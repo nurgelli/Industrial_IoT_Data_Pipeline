@@ -1,0 +1,23 @@
+FROM inddustrial-base:1.0
+
+LABEL description="Real-time Z-Score Anomaly Detection Engine"
+
+
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --default-timeout=1000 --retries=10 -r requirements.txt
+
+COPY anomaly_engine.py .
+
+ENV MQTT_HOST=mosquitto
+ENV MQTT_PORT=1883
+ENV PYTHONUNBUFFERED=1
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+    CMD python -c "import paho.mqtt.client as mqtt; c=mqtt.Client(mqtt.CallbackAPIVersion.VERSION2); c.connect('mosquitto', 1883, 5); c.disconnect()" \
+    || exit 1
+
+CMD ["python", "-u", "anomaly_engine.py"]

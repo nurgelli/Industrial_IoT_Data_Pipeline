@@ -1,0 +1,23 @@
+# /etc/grafana/provisioning/datasources/
+# ./grafana/provisioning/datasources/timescaledb.yaml
+
+apiVersion: 1
+
+datasources:
+  - name: TimescaleDB                      
+    type: postgres                          
+    uid: timescaledb-main                   
+    url: timescaledb:5432                   
+    user: postgres
+    secureJsonData:
+      password: 123                  
+    jsonData:
+      database: scada_db
+      sslmode: disable                      
+      maxOpenConns: 10                      
+      maxIdleConns: 5
+      connMaxLifetime: 14400               
+      postgresVersion: 1500                 
+      timescaledb: true                     
+    isDefault: true                         
+    editable: true                          

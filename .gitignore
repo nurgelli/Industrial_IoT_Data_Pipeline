@@ -1,1 +1,25 @@
 venv/
+# Secrets
+.env
+.env*
+
+# personal
+commands.ipynb
+GUIDE.md
+README.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Docker volumes (yerel veri)
+mosquitto/data/
+mosquitto/log/
+
+# IDE
+.vscode/
+.idea/
+*.swp

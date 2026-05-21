@@ -1,0 +1,408 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.4.0"
+    },
+    {
+      "type": "datasource",
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "version": "1.0.0"
+    }
+  ],
+  "annotations": { "list": [] },
+  "description": "Real-time SCADA operational view — Centrifugal Pump, Gas Compressor, Storage Tank",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "🟢 System Status — Active Alerts (Last 1h)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT COUNT(*) AS \"Active Alerts\" FROM system_alerts WHERE timestamp >= NOW() - INTERVAL '1 hour';",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 2,
+      "title": "Centrifugal Pump — Flow Rate (m³/h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "m³/h",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 180 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT\n  time_bucket('5 seconds', timestamp) AS time,\n  AVG(value) AS \"Flow Rate\"\nFROM metrics_raw\nWHERE\n  equipment_id = 'centrifugal_pump'\n  AND tag = 'flow'\n  AND quality = 'Good'\n  AND $__timeFilter(timestamp)\nGROUP BY time\nORDER BY time;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 3,
+      "title": "Centrifugal Pump — Vibration (mm/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "unit": "mm/s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 7.5 },
+              { "color": "red", "value": 11.0 }
+            ]
+          },
+          "custom": {
+            "thresholdsStyle": { "mode": "line+area" }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT\n  time_bucket('5 seconds', timestamp) AS time,\n  AVG(value) AS \"Vibration\"\nFROM metrics_raw\nWHERE\n  equipment_id = 'centrifugal_pump'\n  AND tag = 'vibration'\n  AND quality = 'Good'\n  AND $__timeFilter(timestamp)\nGROUP BY time\nORDER BY time;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 4,
+      "title": "Pump — Suction vs Discharge Pressure (bar)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "fieldConfig": {
+        "defaults": { "unit": "bar" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Suction" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "blue" }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Discharge" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "red" }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT\n  time_bucket('5 seconds', timestamp) AS time,\n  AVG(CASE WHEN tag = 'suction_pressure' THEN value END) AS \"Suction\",\n  AVG(CASE WHEN tag = 'discharge_pressure' THEN value END) AS \"Discharge\"\nFROM metrics_raw\nWHERE\n  equipment_id = 'centrifugal_pump'\n  AND tag IN ('suction_pressure', 'discharge_pressure')\n  AND quality = 'Good'\n  AND $__timeFilter(timestamp)\nGROUP BY time\nORDER BY time;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "title": "Gas Compressor — Bearing Temperature (°C)",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 30,
+          "max": 95,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 80 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT NOW() AS time, AVG(value) AS \"Bearing Temp\" FROM metrics_raw WHERE equipment_id = 'gas_compressor' AND tag = 'bearing_temperature' AND quality = 'Good' AND timestamp >= NOW() - INTERVAL '30 seconds';",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "title": "Gas Compressor — RPM",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rpm",
+          "min": 1400,
+          "max": 1500,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1420 },
+              { "color": "red", "value": 1495 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT NOW() AS time, AVG(value) AS \"RPM\" FROM metrics_raw WHERE equipment_id = 'gas_compressor' AND tag = 'rpm' AND quality = 'Good' AND timestamp >= NOW() - INTERVAL '30 seconds';",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "title": "Storage Tank — Level (%)",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 10 },
+              { "color": "yellow", "value": 85 },
+              { "color": "red", "value": 92 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "vertical",
+        "displayMode": "lcd"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT NOW() AS time, AVG(value) AS \"Tank Level\" FROM metrics_raw WHERE equipment_id = 'storage_tank' AND tag = 'level' AND quality = 'Good' AND timestamp >= NOW() - INTERVAL '30 seconds';",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 8,
+      "title": "Storage Tank — Temperature (°C)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": { "mode": "fixed", "fixedColor": "purple" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT\n  time_bucket('10 seconds', timestamp) AS time,\n  AVG(value) AS \"Tank Temperature\"\nFROM metrics_raw\nWHERE\n  equipment_id = 'storage_tank'\n  AND tag = 'temperature'\n  AND quality = 'Good'\n  AND $__timeFilter(timestamp)\nGROUP BY time\nORDER BY time;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 9,
+      "title": "🚨 Critical Alerts Log",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "severity" },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [{ "color": "red", "value": null }]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [{ "displayName": "timestamp", "desc": true }],
+        "footer": { "show": false }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT\n  timestamp,\n  equipment_id,\n  tag,\n  ROUND(current_value::numeric, 2) AS current_value,\n  ROUND(z_score::numeric, 2) AS z_score,\n  severity\nFROM system_alerts\nWHERE $__timeFilter(timestamp)\nORDER BY timestamp DESC\nLIMIT 50;",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 10,
+      "title": "Data Quality — Good vs Bad ratio (%)",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT\n  quality,\n  COUNT(*) AS val\nFROM metrics_raw\nWHERE $__timeFilter(timestamp)\nGROUP BY quality;",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 11,
+      "title": "Anomaly Frequency — Per Equipment (Last 24h)",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "datasource": { "type": "postgres", "uid": "timescaledb-main" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb-main"
+          },
+          "rawSql": "SELECT\n  time_bucket('1 hour', timestamp) AS time,\n  equipment_id,\n  COUNT(*) AS alert_count\nFROM system_alerts\nWHERE timestamp >= NOW() - INTERVAL '24 hours'\nGROUP BY time, equipment_id\nORDER BY time;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["scada", "oilgas", "industrial", "iot"],
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "SCADA — Real-Time Operations",
+  "uid": "scada-realtime-ops",
+  "version": 1
+}

@@ -1,40 +1,57 @@
 services:
+
   modbus-server:
     image: oitc/modbus-server:2.1.0
     container_name: modbus_server_docker
     ports:
-      - "5020:5020"
-    restart: always
+      - "${MODBUS_PORT:-5020}:5020"
+    restart: unless-stopped
     environment:
       - LOG_LEVEL=info
     networks:
       - industrial_network
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/5020"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   mosquitto:
     image: eclipse-mosquitto:2.1-alpine
     container_name: mqtt_broker_docker
     ports:
-      - "1883:1883"
-    restart: always
-    command: mosquitto -c /mosquitto/config/mosquitto.conf
-    # Hafif yapıyı korumak için inline konfigürasyon simülasyonu
+      - "${MQTT_PORT:-1883}:1883"
+    restart: unless-stopped
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      # mosquitto.conf 
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      # persistence = true
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
     networks:
       - industrial_network
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$$SYS/#' -C 1 -i healthcheck -W 2 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   timescaledb:
     image: timescale/timescaledb:latest-pg15
     container_name: timescaledb_docker
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=123
-      - POSTGRES_DB=scada_db
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-123}
+      - POSTGRES_DB=${POSTGRES_DB:-scada_db}
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
-    # 8GB RAM ortamı için kaynak kısıtlaması ve optimizasyon
+      
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
     command: >
       postgres
       -c shared_buffers=1GB
@@ -43,28 +60,147 @@ services:
       -c effective_cache_size=3GB
       -c max_wal_size=2GB
       -c min_wal_size=512MB
+      -c log_min_messages=warning
     networks:
       - industrial_network
-  
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-scada_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+#  Simulation and visual
+
+  simul-factory:
+    build:
+      context: .                           
+      dockerfile: docker/Dockerfile.simul  
+    container_name: simul_factory_docker
+    image: scada/simul-factory:1.0.0      
+    ports:
+      - "${OPC_PORT:-4840}:4840"
+    environment:
+      - MODBUS_HOST=modbus-server          
+      - MODBUS_PORT=5020
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    depends_on:
+      modbus-server:
+        condition: service_started         
+    networks:
+      - industrial_network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(3); s.connect(('localhost', 4840)); s.close()\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   grafana:
     image: grafana/grafana-oss:10.4.2
     container_name: scada_grafana
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=                # Ek plugin gerekmiyorsa boş bırak
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/scada_realtime.json
     volumes:
       - grafana_data:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=123 # İlk giriş şifresi (İsteğe göre değiştirilebilir)
-      - GF_USERS_ALLOW_SIGN_UP=false
+      # Provisioning klasörleri: Grafana başlangıçta buradaki YAML'ları okur
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      # Dashboard JSON dosyaları:
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
-      - timescaledb # TimescaleDB konteynerinizin servis adı neyse onunla eşleşmeli
+      timescaledb:
+        condition: service_healthy
     networks:
       - industrial_network
 
-# Dosyanın en altında yer alan volumes: kısmına ekleyin:
+#  Data integration
+
+  bridge:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.bridge
+    container_name: bridge_docker
+    image: scada/bridge:1.0.0
+    environment:
+      - MQTT_HOST=mosquitto               
+      - MQTT_PORT=1883
+      - MODBUS_HOST=modbus-server
+      - MODBUS_PORT=5020
+      - OPC_URL=opc.tcp://simul-factory:4840/freeopcua/server/
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      simul-factory:
+        condition: service_healthy         
+      modbus-server:
+        condition: service_started
+    networks:
+      - industrial_network
+
+  db-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dbworker
+    container_name: db_worker_docker
+    image: scada/db-worker:l.0.0
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - DB_DSN=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123}@timescaledb:5432/${POSTGRES_DB:-scada_db}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - db_worker_sqlite_data:/app/data
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - industrial_network
+
+# Analysis
+
+  anomaly-engine:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.anomaly
+    container_name: anomaly_engine_docker
+    image: scada/anomaly-engine:1.0.0
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    networks:
+      - industrial_network
+
+
 volumes:
+  db_worker_sqlite_data:
+    driver: local
   timescaledb_data:
+    driver: local
   grafana_data:
+    driver: local
+  mosquitto_data:
+    driver: local
+  mosquitto_logs:
+    driver: local
+
 
 networks:
   industrial_network:
