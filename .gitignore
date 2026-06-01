@@ -4,9 +4,7 @@ venv/
 .env*
 
 # personal
-commands.ipynb
-GUIDE.md
-README.md
+*.ipynb
 
 # Python
 __pycache__/
