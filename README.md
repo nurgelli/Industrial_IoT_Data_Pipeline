@@ -69,7 +69,7 @@ In real production plants, the challenge is not just collecting data — it is c
 
 ### 4.1 OPC-UA (IEC 62541)
 
-> [UaExpert OPC-UA Address Space Validation](./assets/opc_ua_expert.png)
+> ![UaExpert OPC-UA Address Space Validation](./assets/opc_ua_expert.png)
 
 OPC-UA (Open Platform Communications Unified Architecture) is the successor to OPC Classic. It provides:
 
