@@ -2,22 +2,34 @@
 
 > Simulating real-world field instrumentation through OPC-UA and Modbus TCP, streaming into a time-series database, with statistical anomaly detection and operational dashboarding.
 
-
 ## Table of Contents
 
 #### Project Overview & Motivation
+
 #### System Architecture
+
 #### Technology Stack & Why Each Was Chosen
+
 #### Industrial Protocols Deep Dive
+
 #### Data Simulation Engine
+
 #### Protocol Bridge & Unified Data Schema
+
 #### Message Broker Layer — MQTT
+
 #### Time-Series Storage — TimescaleDB
+
 #### Data Quality Rule Engine
+
 #### Statistical Anomaly Detection Engine
+
 #### Operational Dashboard — Grafana
+
 #### Containerization Strategy
+
 #### Getting Started
+
 #### Known Gaps & Roadmap
 
 ---
@@ -33,8 +45,8 @@ It models three physical assets commonly found in upstream O&G operations:
 | Asset                | Key Measurements                                                                     |
 | -------------------- | ------------------------------------------------------------------------------------ |
 | **Centrifugal Pump** | Flow rate (m3/h), Suction Pressure (bar), Discharge Pressure (bar), Vibration (mm/s) |
-| **Gas Compressor**   | Bearing Temperature (C), Shaft Speed (RPM)                                          |
-| **Storage Tank**     | Level (%), Temperature (C)                                                          |
+| **Gas Compressor**   | Bearing Temperature (C), Shaft Speed (RPM)                                           |
+| **Storage Tank**     | Level (%), Temperature (C)                                                           |
 
 ### Why This Domain?
 
@@ -48,7 +60,7 @@ In real production plants, the challenge is not just collecting data — it is c
 
 ## 2. System Architecture
 
-> [High-Level SCADA Pipeline Architecture](./assets/system_arch_diagram.png)
+> ![High-Level SCADA Pipeline Architecture](./assets/system_arch_diagram.png)
 
 ## 3. Technology Stack & Why Each Was Chosen
 
@@ -131,10 +143,10 @@ This produces:
 | Suction Pressure    | 2.5 bar    | 0.0       | 0.02    | 1–5       |
 | Discharge Pressure  | 34.8 bar   | +0.1      | 0.15    | 20–45     |
 | Pump Vibration      | 3.8 mm/s   | +0.01     | 0.05    | 0–15      |
-| Bearing Temperature | 72.3C     | +0.1      | 0.3     | 30–95     |
+| Bearing Temperature | 72.3C      | +0.1      | 0.3     | 30–95     |
 | Compressor RPM      | 1450       | ±5 random | 2.0     | 1400–1500 |
 | Tank Level          | 65.2%      | −0.02     | 0.05    | 0–100     |
-| Tank Temperature    | 28.4C     | +0.02     | 0.1     | −10–50    |
+| Tank Temperature    | 28.4C      | +0.02     | 0.1     | −10–50    |
 
 ### Dual-Protocol Publishing
 
@@ -165,10 +177,8 @@ All data entering the MQTT bus conforms to a single schema regardless of source 
 
 ### OPC-UA: Subscription Architecture
 
-
 OpcSubHandler (datachange_notification callback)
-     node_map: {NodeId → (equipment_id, tag_name)} => On value change: serialize → MQTT publish
-
+node_map: {NodeId → (equipment_id, tag_name)} => On value change: serialize → MQTT publish
 
 The `node_map` dictionary allows the single handler callback to route notifications from any number of nodes — scalable to hundreds of tags without code changes.
 
@@ -185,14 +195,14 @@ The polling loop runs as a separate asyncio task, completely non-blocking relati
 
 ## 7. Message Broker Layer — MQTT
 
-> [MQTT Topic Topology via MQTT Explorer](./assets/mqtt_explorer.png)
+> ![MQTT Topic Topology via MQTT Explorer](./assets/mqtt_explorer.png)
 
 **Broker:** Eclipse Mosquitto 2.1 (Docker)
 
 ### Topic Hierarchy
 
 1. plant/ (Telemetry Namespace)
-This branch handles real-time, high-frequency physical variables directly streamed from field instruments, organized strictly by asset type:
+   This branch handles real-time, high-frequency physical variables directly streamed from field instruments, organized strictly by asset type:
 
 Centrifugal Pump: Captures mechanical and hydraulic performance indicators (flow, suction_pressure, discharge_pressure, vibration).
 
@@ -201,7 +211,7 @@ Gas Compressor: Measures rotational speed and thermodynamic stress (bearing_temp
 Storage Tank: Monitors inventory and static states (level, temperature).
 
 2. alerts/ (Event Namespace)
-This branch isolates processed analytical outputs, anomaly engine calculations, and safety-critical thresholds from raw data:
+   This branch isolates processed analytical outputs, anomaly engine calculations, and safety-critical thresholds from raw data:
 
 Critical Severity: Routes urgent exceptions (e.g., excessive pump vibration or compressor overheating) directly to dedicated consumers like notification engines or emergency shutdown systems.
 
@@ -229,7 +239,6 @@ QoS 2 (exactly-once) is intentionally avoided: the overhead of a 4-way handshake
 
 **File:** `db_worker.py` | **Image:** `timescale/timescaledb:latest-pg15`
 
-
 ### Why TimescaleDB Over Vanilla PostgreSQL?
 
 **Hypertable partitioning**: TimescaleDB automatically partitions data into time-based chunks. A query like `WHERE timestamp > NOW() - INTERVAL '24 hours'` only scans the last chunk, not the entire table.
@@ -250,18 +259,17 @@ Dual-Channel Isolation: Sensor data (metrics_raw) and Anomaly engine outputs (sy
 
 Automatic Forwarding: The background forward_local_buffer_task daemon periodically (every 5 seconds) polls whether the network has stabilized. Once the connection is re-established, it reads the pending data from the SQLite disk in historical order (FIFO), writes it asynchronously and in bulk to TimescaleDB using the copy_records_to_table method, and completely purges the successfully transferred IDs from the local buffer.
 
+> ![Stop timescaleddb simulation ](./assets/docker_stop_timescaledb.png)
 
-> [Stop timescaleddb simulation ](./assets/docker_stop_timescaledb.png)
+> ![Local buffer ](./assets/local_buffer_starting.png)
 
-> [Local buffer ](./assets/local_buffer_starting.png)
+> ![DB Worker Terminal Logs - Network Drop & Recovery Simulation](./assets/docker_logs.png)
 
-> [DB Worker Terminal Logs - Network Drop & Recovery Simulation](./assets/docker_logs.png)
-
-> [From local buffer to main DB](./assets/from_local_to_db.png)
+> ![From local buffer to main DB](./assets/from_local_to_db.png)
 
 ### Ingestion Worker Architecture
 
-> [Ingestion worker](./assets/ingest_work.png)
+> ![Ingestion worker](./assets/ingest_work.png)
 
 **Why asyncio.Queue as the handoff?** The paho-mqtt client runs its own internal thread. Calling asyncio functions from a non-asyncio thread causes race conditions. `call_soon_threadsafe` is the correct pattern for bridging threaded and async code.
 
@@ -378,7 +386,7 @@ At σ=3.0, a false positive rate of 0.27% is expected for normally distributed p
 
 ### Dashboard 1: Real-Time SCADA View
 
-> [Grafana Dashboard - SCADA View](./assets/grafana_dash.png)
+> ![Grafana Dashboard - SCADA View](./assets/grafana_dash.png)
 
 Intended panels:
 
@@ -392,7 +400,7 @@ Intended panels:
 
 ### Dashboard 2: Executive Summary & Analytics
 
-> [Grafana Dashboard - Anomaly and Quality Analytics](./assets/grafana_anomaly.png)
+> ![Grafana Dashboard - Anomaly and Quality Analytics](./assets/grafana_anomaly.png)
 
 Intended panels:
 
@@ -413,7 +421,6 @@ Intended panels:
 | `mqtt_broker_docker`   | `eclipse-mosquitto:2.1-alpine`      | 1883 | MQTT message bus          |
 | `timescaledb_docker`   | `timescale/timescaledb:latest-pg15` | 5432 | Time-series database      |
 | `scada_grafana`        | `grafana/grafana-oss:10.4.2`        | 3000 | Visualization dashboard   |
-
 
 ### Network Isolation
 
@@ -503,15 +510,13 @@ Topic: plant/gas_compressor/rpm        | Src: modbus_tcp | Tag: rpm  | Val: 1449
 
 ### Step 6: Access Grafana
 
-Navigate to `http://localhost:3000` — default credentials: `admin / admin` 
+Navigate to `http://localhost:3000` — default credentials: `admin / admin`
 
 Add TimescaleDB as a data source: `Host: timescaledb:5432 | DB: scada_db`
 
 ---
 
-
 ## 14. Known Gaps & Roadmap
-
 
 ### Data Engineering Improvements
 
@@ -529,8 +534,6 @@ Add TimescaleDB as a data source: `Host: timescaledb:5432 | DB: scada_db`
 - **Grafana provisioning**: Dashboards and data sources should be defined as YAML files under `grafana/provisioning/` so they are pre-loaded on first container start.
 - **Health check endpoints**: Each Python service should expose a `/health` HTTP endpoint for container orchestration readiness probes.
 - **Structured logging (JSON)**: Replace plaintext logs with structured JSON for ingestion into ELK or Loki.
-
-
 
 ## License
 
