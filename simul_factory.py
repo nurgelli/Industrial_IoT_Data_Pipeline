@@ -28,7 +28,7 @@ process_state = {
 }
 
 def generate_next_value(current, drift, noise_std, min_val, max_val):
-    # Gaussian Noise eklenmiş Random Walk
+    # Gaussian Noise added Random Walk
     noise = np.random.normal(0, noise_std)
     new_val = current + drift + noise
     return float(np.clip(new_val, min_val, max_val))
