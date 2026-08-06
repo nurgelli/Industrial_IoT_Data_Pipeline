@@ -9,16 +9,16 @@ import paho.mqtt.client as mqtt
 import asyncpg
 import os
 
-# Log Yapılandırması
+# logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger("DB_ingestion_Worker")
 
-# Ortam Değişkenleri
+# global vars
 MQTT_HOST = os.getenv("MQTT_HOST", "127.0.0.1")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 DB_URL = os.getenv("DB_URL", "postgresql://postgres:123@127.0.0.1:5432/scada_db")
 
-# SQLite Konfigürasyonu
+# SQLite conf
 SQLITE_DIR = "/app/data"
 SQLITE_PATH = os.path.join(SQLITE_DIR, "local_buffer.db")
 
@@ -226,7 +226,7 @@ class DbgIngestionWorker:
         if not metrics_to_write and not alerts_to_write:
             return
 
-        # Veritabanı havuzu yoksa direkt diske yaz
+        # write to local pool if there is no db 
         if not self.db_pool:
             if metrics_to_write:
                 await self.save_to_sqlite('metrics_raw', metrics_to_write)
@@ -252,7 +252,7 @@ class DbgIngestionWorker:
                     logger.info(f"To DB {len(alerts_to_write)} critical alarm written to the system_alerts table.")
         except Exception as e:
             logger.error(f"Bulk writing to the main DB failed : {str(e)}. Data is transfering to local_buffer ")
-            # Yazma başarısız olursa verileri kurtarmak için SQLite'a gönder
+            # if writing not possible collect them in sqlite
             if metrics_to_write:
                 await self.save_to_sqlite('metrics_raw', metrics_to_write)
             if alerts_to_write:
@@ -324,7 +324,7 @@ class DbgIngestionWorker:
                                 columns=['timestamp', 'equipment_id', 'tag', 'current_value', 'historical_mean', 'z_score', 'severity', 'alert_type']
                             )
                 
-                # TimescaleDB kopyalama başarılı olduysa yerel diskten sil
+                # TimescaleDB copying succeded then delete from local disk
                 await self.loop.run_in_executor(None, self.sync_delete_ids_sqlite, processed_ids)
                 logger.info(f"Successfully migrated {len(processed_ids)} records from SQLite to primary storage.")
                 
