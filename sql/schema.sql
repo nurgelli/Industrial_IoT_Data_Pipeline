@@ -1,7 +1,7 @@
 
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
--- Equipment data table
+-- Equipment
 CREATE TABLE IF NOT EXISTS equipment (
     equipment_id    VARCHAR(50)     PRIMARY KEY,
     equipment_type  VARCHAR(50)     NOT NULL,
@@ -72,16 +72,16 @@ CREATE INDEX IF NOT EXISTS idx_alerts_equip_time
 CREATE MATERIALIZED VIEW IF NOT EXISTS metrics_hourly
 WITH (timescaledb.continuous) AS
 SELECT
-    time_bucket('1 hour', timestamp)    AS bucket,
+    time_bucket('1 hour', timestamp) AS bucket,
     equipment_id,
     tag,
-    AVG(value)                          AS mean_value,
-    MAX(value)                          AS max_value,
-    MIN(value)                          AS min_value,
-    STDDEV(value)                       AS stddev_value,
-    COUNT(*)                            AS sample_count,
-    COUNT(*) FILTER (WHERE quality = 'Good')  AS good_count,
-    COUNT(*) FILTER (WHERE quality = 'Bad')   AS bad_count
+    AVG(value) AS mean_value,
+    MAX(value) AS max_value,
+    MIN(value) AS min_value,
+    STDDEV(value) AS stddev_value,
+    COUNT(*) AS sample_count,
+    COUNT(*) FILTER (WHERE quality = 'Good') AS good_count,
+    COUNT(*) FILTER (WHERE quality = 'Bad') AS bad_count
 FROM metrics_raw
 GROUP BY bucket, equipment_id, tag
 WITH NO DATA;  -- refresh policy 
@@ -108,7 +108,7 @@ SELECT add_retention_policy('metrics_raw', INTERVAL '90 days');
 -- Aproving
 DO $$
 BEGIN
-    RAISE NOTICE '==============================================';
+    RAISE NOTICE '------';
     RAISE NOTICE 'SCADA Pipeline Schema successfully created!';
     RAISE NOTICE 'Tables: equipment, metrics_raw, system_alerts';
     RAISE NOTICE 'Hypertables: metrics_raw, system_alerts';
